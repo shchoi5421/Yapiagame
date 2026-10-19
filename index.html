@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>야피아게임</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+<div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+<header class="topbar">
+  <a class="brand" href="/"><span class="brand-mark">夜</span><span>야피아게임<small>THE NIGHT TABLE</small></span></a>
+  <div class="top-status"><span class="pulse"></span> 실시간 멀티플레이</div>
+</header>
+<main>
+  <section id="lobby-screen" class="screen lobby-layout">
+    <div class="hero">
+      <div class="eyebrow"><span></span> SOCIAL DEDUCTION · 6 PLAYERS</div>
+      <h1>진실은 밤에<br><em>숨는다.</em></h1>
+      <p>서로를 믿을 수 있을까?<br>토론하고, 추리하고, 마지막까지 살아남아라.</p>
+      <div class="hero-tags"><span>01 — 역할 추리</span><span>02 — 비밀 행동</span><span>03 — 생존 투표</span></div>
+    </div>
+    <div class="join-card">
+      <div class="card-kicker">ENTER THE TABLE</div>
+      <h2>게임에 참가하기</h2>
+      <label for="nickname">플레이어 닉네임</label>
+      <input id="nickname" maxlength="18" placeholder="닉네임을 입력하세요" autocomplete="nickname">
+      <label for="room-code">방 코드 <span class="optional">참가할 때만 입력</span></label>
+      <input id="room-code" maxlength="5" placeholder="예: A7K2Q" autocapitalize="characters">
+      <button id="join-btn" class="btn btn-primary">방 참가하기 <span>↗</span></button>
+      <div class="or-line"><span>또는</span></div>
+      <button id="create-btn" class="btn btn-secondary">새로운 방 만들기 <span>＋</span></button>
+      <p class="fine-print">한 방에 최대 6명 · 역할은 무작위로 배정됩니다</p>
+    </div>
+  </section>
+
+  <section id="game-screen" class="screen hidden">
+    <div class="game-head">
+      <div><div class="eyebrow"><span></span> PRIVATE ROOM</div><h1>야피아 <em>테이블</em></h1></div>
+      <div class="room-pill">ROOM <strong id="room-code-display">-----</strong><button id="copy-code" title="방 코드 복사">▣</button></div>
+    </div>
+    <div class="game-grid">
+      <section class="table-panel panel">
+        <div class="panel-heading"><div><span class="section-index">01</span><h2>원탁</h2></div><span id="phase-badge" class="phase-badge">대기 중</span></div>
+        <div id="table-stage" class="table-stage">
+          <div class="table-ring"><div class="table-center"><span class="moon">☾</span><strong id="center-title">밤이 오기 전</strong><small id="center-subtitle">플레이어를 기다리는 중</small></div></div>
+          <div id="seats" class="seats"></div>
+        </div>
+        <div class="table-footer"><span><i class="dot dot-alive"></i> 생존</span><span><i class="dot dot-dead"></i> 탈락</span><span id="player-count">0 / 6명</span></div>
+      </section>
+      <aside class="side-column">
+        <section class="panel role-panel">
+          <div class="panel-heading"><div><span class="section-index">02</span><h2>내 역할</h2></div><span class="lock">▣ 비공개</span></div>
+          <div id="role-empty" class="role-empty"><span class="role-symbol">?</span><strong>아직 역할이 없습니다</strong><p>방장이 게임을 시작하면<br>나에게만 역할이 공개됩니다.</p></div>
+          <div id="role-content" class="role-content hidden"><div id="role-symbol" class="role-symbol">♟</div><div id="role-name" class="role-name">역할</div><div id="role-person" class="role-person"></div><p id="role-description"></p></div>
+          <div id="role-actions" class="role-actions hidden"><label id="target-label">대상 선택</label><select id="target-select"></select><button id="action-btn" class="btn btn-primary">행동 제출</button><p id="action-note" class="action-note"></p></div>
+        </section>
+        <section class="panel controls-panel">
+          <div class="panel-heading"><div><span class="section-index">03</span><h2>게임 진행</h2></div></div>
+          <p id="phase-message" class="phase-message">방을 만들거나 코드로 참가하세요.</p>
+          <div id="host-controls" class="host-controls hidden"><button id="start-btn" class="btn btn-primary">게임 시작</button><button id="vote-start-btn" class="btn btn-primary hidden">토론 종료 · 투표 시작</button><button id="next-night-btn" class="btn btn-primary hidden">다음 밤으로</button></div>
+          <div id="vote-controls" class="vote-controls hidden"><label for="vote-select">투표 대상</label><select id="vote-select"></select><button id="vote-btn" class="btn btn-primary">투표하기</button></div>
+          <div id="game-over" class="game-over hidden"><strong id="winner-title">게임 종료</strong><div id="role-reveal"></div><button id="back-lobby" class="btn btn-secondary">새 방에서 다시 하기</button></div>
+        </section>
+      </aside>
+      <section class="panel chat-panel">
+        <div class="panel-heading"><div><span class="section-index">04</span><h2>채팅</h2></div><div class="chat-tabs"><button class="chat-tab active" data-channel="public">전체 채팅</button><button class="chat-tab hidden" id="mafia-tab" data-channel="mafia">마피아 비밀방</button></div></div>
+        <div id="chat-log" class="chat-log"><div class="chat-placeholder">대화가 시작되면 여기에 표시됩니다.</div></div>
+        <form id="chat-form" class="chat-form"><input id="chat-input" maxlength="300" placeholder="메시지를 입력하세요..." autocomplete="off"><button type="submit" aria-label="메시지 보내기">↑</button></form>
+        <p class="chat-hint" id="chat-hint">낮에는 생존자 전체 채팅을 사용할 수 있습니다.</p>
+      </section>
+    </div>
+    <div id="toast" class="toast hidden"></div>
+  </section>
+</main>
+<footer><span>야피아게임</span><span>서로의 말 속에서 진실을 찾아라.</span></footer>
+<script src="/static/app.js"></script>
+</body>
+</html>
